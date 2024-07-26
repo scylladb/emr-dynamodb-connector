@@ -14,6 +14,11 @@
 package org.apache.hadoop.dynamodb.read;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.dynamodb.DynamoDBClient;
@@ -65,13 +70,26 @@ public abstract class AbstractDynamoDBInputFormat<K, V> implements InputFormat<K
     }
 
     long tableSizeBytes = conf.getLong(DynamoDBConstants.TABLE_SIZE_BYTES, 1);
-    int numSegments = getNumSegments(configuredReadThroughput, (int)
+    int numTotalSegments = getNumSegments(configuredReadThroughput, (int)
         maxWriteThroughputAllocated, tableSizeBytes, conf);
-    int numMappers = getNumMappers(numSegments, configuredReadThroughput, conf);
 
-    log.info("Using " + numSegments + " segments across " + numMappers + " mappers");
+    Set<Integer> excludedSegments =
+        Arrays.stream(conf.getInts(DynamoDBConstants.EXCLUDED_SCAN_SEGMENTS))
+            .boxed()
+            .collect(Collectors.toSet());
 
-    return getSplitGenerator().generateSplits(numMappers, numSegments, conf);
+    List<Integer> segments =
+        IntStream.range(0, numTotalSegments)
+            .boxed()
+            .filter(i -> !excludedSegments.contains(i))
+            .collect(Collectors.toList());
+
+    int numEffectiveSegments = segments.size();
+    int numMappers = getNumMappers(numEffectiveSegments, configuredReadThroughput, conf);
+
+    log.info("Using " + numEffectiveSegments + " segments across " + numMappers + " mappers");
+
+    return getSplitGenerator().generateSplits(numMappers, numTotalSegments, segments, conf);
   }
 
   protected DynamoDBRecordReaderContext buildDynamoDBRecordReaderContext(InputSplit split,
