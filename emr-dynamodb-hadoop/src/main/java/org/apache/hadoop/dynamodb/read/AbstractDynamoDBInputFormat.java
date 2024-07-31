@@ -101,7 +101,7 @@ public abstract class AbstractDynamoDBInputFormat<K, V> implements InputFormat<K
     }
 
     // Segments for size
-    int numSegmentsForSize = (int) (currentTableSizeBytes / DynamoDBConstants
+    int numSegmentsForSize = (int) Math.round((double)currentTableSizeBytes / DynamoDBConstants
         .MAX_BYTES_PER_SEGMENT);
     log.info("Would use " + numSegmentsForSize + " segments for size");
 
