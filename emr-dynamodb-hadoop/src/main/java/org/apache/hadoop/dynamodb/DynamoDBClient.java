@@ -53,7 +53,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
@@ -462,13 +462,7 @@ public class DynamoDBClient {
     // initialized
     String providerClass = conf.get(DynamoDBConstants.CUSTOM_CREDENTIALS_PROVIDER_CONF);
     if (!Strings.isNullOrEmpty(providerClass)) {
-      try {
-        providersList.add(
-            (AwsCredentialsProvider) ReflectionUtils.newInstance(Class.forName(providerClass), conf)
-        );
-      } catch (ClassNotFoundException e) {
-        throw new RuntimeException("Custom AWSCredentialsProvider not found: " + providerClass, e);
-      }
+      providersList.add(DynamoDBUtil.loadAwsCredentialsProvider(providerClass, conf));
     }
 
     // try to fetch credentials from core-site
@@ -485,7 +479,8 @@ public class DynamoDBClient {
     }
 
     if (Strings.isNullOrEmpty(accessKey) || Strings.isNullOrEmpty(secretKey)) {
-      providersList.add(InstanceProfileCredentialsProvider.create());
+      log.debug("Custom credential provider not found, loading default provider from sdk");
+      providersList.add(DefaultCredentialsProvider.create());
     } else if (!Strings.isNullOrEmpty(sessionKey)) {
       final AwsCredentials credentials =
           AwsSessionCredentials.create(accessKey, secretKey, sessionKey);
