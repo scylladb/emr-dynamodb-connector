@@ -17,7 +17,6 @@ import static org.apache.hadoop.dynamodb.DynamoDBConstants.DEFAULT_MAX_ITEM_SIZE
 import static org.mockito.Mockito.mock;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.hadoop.conf.Configurable;
@@ -28,7 +27,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.net.URI;
@@ -37,11 +35,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.Map;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.endpoints.Endpoint;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
@@ -101,13 +104,29 @@ public class DynamoDBClientTest {
   }
 
   @Test
-  public void testCustomCredentialsProvider() {
+  public void testCustomCredentialsProviderWithConstructor() {
     final String MY_ACCESS_KEY = "abc";
     final String MY_SECRET_KEY = "xyz";
     Configuration conf = new Configuration();
     conf.set("my.accessKey", MY_ACCESS_KEY);
     conf.set("my.secretKey", MY_SECRET_KEY);
     conf.set(DynamoDBConstants.CUSTOM_CREDENTIALS_PROVIDER_CONF, MyAWSCredentialsProvider.class
+        .getName());
+
+    DynamoDBClient dynamoDBClient = new DynamoDBClient();
+    AwsCredentialsProvider provider = dynamoDBClient.getAwsCredentialsProvider(conf);
+    Assert.assertEquals(MY_ACCESS_KEY, provider.resolveCredentials().accessKeyId());
+    Assert.assertEquals(MY_SECRET_KEY, provider.resolveCredentials().secretAccessKey());
+  }
+
+  @Test
+  public void testCustomCredentialsProviderWithMethod() {
+    final String MY_ACCESS_KEY = "abc";
+    final String MY_SECRET_KEY = "xyz";
+    Configuration conf = new Configuration();
+    conf.set("my.accessKey", MY_ACCESS_KEY);
+    conf.set("my.secretKey", MY_SECRET_KEY);
+    conf.set(DynamoDBConstants.CUSTOM_CREDENTIALS_PROVIDER_CONF, MyFactoryCredentialsProvider.class
         .getName());
 
     DynamoDBClient dynamoDBClient = new DynamoDBClient();
@@ -174,6 +193,24 @@ public class DynamoDBClientTest {
     Assert.assertEquals(DYNAMODB_SECRET_KEY, sessionCredentials.secretAccessKey());
     Assert.assertEquals(DYNAMODB_SESSION_KEY, sessionCredentials.sessionToken());
 
+  }
+
+  @Test
+  public void testDefaultCredentialProvider() {
+    DynamoDBClient dynamoDBClient = new DynamoDBClient();
+    AwsCredentialsProvider provider = dynamoDBClient.getAwsCredentialsProvider(conf);
+    Assert.assertTrue(provider instanceof AwsCredentialsProviderChain);
+    AwsCredentialsProviderChain providerChain = (AwsCredentialsProviderChain) provider;
+    try {
+      Field providersField = AwsCredentialsProviderChain.class.getDeclaredField("credentialsProviders");
+      providersField.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      List<AwsCredentialsProvider> providers = (List<AwsCredentialsProvider>) providersField.get(providerChain);
+      Assert.assertEquals(1, providers.size());
+      Assert.assertTrue(providers.get(0) instanceof DefaultCredentialsProvider);
+    } catch (Exception e) {
+      Assert.fail("Unexpected error thrown: " + e.getMessage());
+    }
   }
 
   @Test
@@ -351,6 +388,7 @@ public class DynamoDBClientTest {
     }
   }
 
+  // Default Constructor-based credential provider
   private static class MyAWSCredentialsProvider implements AwsCredentialsProvider, Configurable {
     private Configuration conf;
     private String accessKey;
@@ -375,6 +413,34 @@ public class DynamoDBClientTest {
     public void setConf(Configuration configuration) {
       this.conf = configuration;
       init();
+    }
+  }
+
+  // Method-based constructor credential provider
+  private static class MyFactoryCredentialsProvider implements AwsCredentialsProvider, Configurable {
+    private Configuration conf;
+    private String accessKey;
+    private String secretKey;
+
+    public static MyFactoryCredentialsProvider create() {
+      return new MyFactoryCredentialsProvider();
+    }
+
+    @Override
+    public AwsCredentials resolveCredentials() {
+      return AwsBasicCredentials.create(accessKey, secretKey);
+    }
+
+    @Override
+    public Configuration getConf() {
+      return this.conf;
+    }
+
+    @Override
+    public void setConf(Configuration configuration) {
+      this.conf = configuration;
+      accessKey = conf.get("my.accessKey");
+      secretKey = conf.get("my.secretKey");
     }
   }
 
