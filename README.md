@@ -6,6 +6,7 @@ This is a fork from [awslabs/emr-dynamodb-connector](https://github.com/awslabs/
 ## Changes compared to the original library
 
 - Add `DynamoDBConstants.CUSTOM_CLIENT_BUILDER_TRANSFORMER` that allows users to pass in the Hadoop job configuration the name of a class that implements `DynamoDbClientBuilderTransformer` to customize the underlying DynamoDB client.
+- Automatically filter out expired items of tables where TTL is enabled. To use it, set `DynamoDBConstants.TTL_ATTRIBUTE_NAME` in the job configuration to the TTL attribute name of the table.
 - Change the strategy that splits Hadoop jobs into tasks (in class `DynamoDBInputFormat`) as follows:
   - Break down the data into chunks of 100 MB instead of 1 GB;
   - Set the number of task mappers to the number of scan segments by default;
