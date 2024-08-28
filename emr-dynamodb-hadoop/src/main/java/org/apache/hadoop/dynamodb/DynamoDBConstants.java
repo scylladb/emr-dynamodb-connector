@@ -56,6 +56,7 @@ public interface DynamoDBConstants {
   String TABLE_NAME = "dynamodb.table.name";
   String OUTPUT_TABLE_NAME = "dynamodb.output.tableName";
   String INPUT_TABLE_NAME = "dynamodb.input.tableName";
+  String TTL_ATTRIBUTE_NAME = "dynamodb.input.ttlAttributeName";
 
   String THROUGHPUT_WRITE_PERCENT = "dynamodb.throughput.write.percent";
   String THROUGHPUT_READ_PERCENT = "dynamodb.throughput.read.percent";
