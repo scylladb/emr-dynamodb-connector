@@ -13,11 +13,20 @@
 
 package org.apache.hadoop.dynamodb.preader;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
+import org.apache.hadoop.dynamodb.DynamoDBConstants;
+import org.apache.hadoop.dynamodb.filter.DynamoDBFilter;
+import org.apache.hadoop.dynamodb.filter.DynamoDBFilterOperator;
+import org.apache.hadoop.dynamodb.filter.DynamoDBQueryFilter;
 import org.apache.hadoop.dynamodb.util.AbstractTimeSource;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ComparisonOperator;
+import software.amazon.awssdk.services.dynamodb.model.Condition;
 
 public class ScanReadManager extends AbstractReadManager {
 
@@ -44,10 +53,45 @@ public class ScanReadManager extends AbstractReadManager {
     // scanned.
     segmentsRemaining.set(shuffleSgments.size());
 
+    // Set a Scan query filter to skip expired records if the configuration
+    // provides the TTL attribute name
+    Optional<DynamoDBQueryFilter> maybeScanFilter =
+        Optional.ofNullable(context.getConf().get(DynamoDBConstants.TTL_ATTRIBUTE_NAME))
+            .map(attributeName -> {
+              long now = Instant.now().getEpochSecond();
+              DynamoDBQueryFilter filter = new DynamoDBQueryFilter();
+              filter.addScanFilter(new DynamoDBFilter() {
+                @Override
+                public String getColumnName() {
+                  return attributeName;
+                }
+
+                @Override
+                public String getColumnType() {
+                  throw new Error();
+                }
+
+                @Override
+                public DynamoDBFilterOperator getOperator() {
+                  throw new Error();
+                }
+
+                @Override
+                public Condition getDynamoDBCondition() {
+                  return Condition
+                      .builder()
+                      .comparisonOperator(ComparisonOperator.GT)
+                      .attributeValueList(AttributeValue.fromN(String.valueOf(now)))
+                      .build();
+                }
+              });
+              return filter;
+            });
+
     // Queue up segment scan requests
     for (Integer segment : shuffleSgments) {
-      enqueueReadRequestToTail(new ScanRecordReadRequest(this, context, segment, null /*
-      lastEvaluatedKey */));
+      enqueueReadRequestToTail(new ScanRecordReadRequest(this, context, segment, maybeScanFilter,
+          null /* lastEvaluatedKey */));
     }
   }
 }
