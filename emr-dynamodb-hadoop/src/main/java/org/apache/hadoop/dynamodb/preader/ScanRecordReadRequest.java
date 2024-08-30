@@ -13,38 +13,45 @@
 
 package org.apache.hadoop.dynamodb.preader;
 
-import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.hadoop.dynamodb.DynamoDBConstants;
 import org.apache.hadoop.dynamodb.DynamoDBFibonacciRetryer.RetryResult;
-import org.apache.hadoop.dynamodb.filter.DynamoDBFilter;
-import org.apache.hadoop.dynamodb.filter.DynamoDBFilterOperator;
 import org.apache.hadoop.dynamodb.filter.DynamoDBQueryFilter;
 import org.apache.hadoop.dynamodb.preader.RateController.RequestLimit;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.ComparisonOperator;
-import software.amazon.awssdk.services.dynamodb.model.Condition;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 
 public class ScanRecordReadRequest extends AbstractRecordReadRequest {
 
+  /** Optional ScanFilter to add to Scan requests */
+  final Optional<DynamoDBQueryFilter> maybeScanFilter;
+
+  @Deprecated
   public ScanRecordReadRequest(AbstractReadManager readMgr, DynamoDBRecordReaderContext context,
       int segment, Map<String, AttributeValue> lastEvaluatedKey) {
     super(readMgr, context, segment, lastEvaluatedKey);
+    this.maybeScanFilter = Optional.empty();
+  }
+
+  public ScanRecordReadRequest(AbstractReadManager readMgr, DynamoDBRecordReaderContext context,
+      int segment, Optional<DynamoDBQueryFilter> maybeScanFilter,
+      Map<String, AttributeValue> lastEvaluatedKey) {
+    super(readMgr, context, segment, lastEvaluatedKey);
+    this.maybeScanFilter = maybeScanFilter;
   }
 
   @Override
   protected AbstractRecordReadRequest buildNextReadRequest(PageResults<Map<String,
       AttributeValue>> pageResults) {
-    return new ScanRecordReadRequest(readMgr, context, segment, pageResults.lastEvaluatedKey);
+    return new ScanRecordReadRequest(readMgr, context, segment, maybeScanFilter,
+        pageResults.lastEvaluatedKey);
   }
 
   @Override
   protected PageResults<Map<String, AttributeValue>> fetchPage(RequestLimit lim) {
     // Read from DynamoDB
     RetryResult<ScanResponse> retryResult = context.getClient()
-            .scanTable(tableName, queryFilter().orElse(null), segment,
+            .scanTable(tableName, maybeScanFilter.orElse(null), segment,
                 context.getSplit().getTotalSegments(), lastEvaluatedKey, lim.items,
                 context.getReporter());
 
@@ -62,45 +69,6 @@ public class ScanRecordReadRequest extends AbstractRecordReadRequest {
         response.hasLastEvaluatedKey() ? response.lastEvaluatedKey() : null,
         consumedCapacityUnits,
         retries);
-  }
-
-  /**
-   * Set a Scan query filter to skip expired records if the configuration
-   * provides the TTL attribute name
-   */
-  Optional<DynamoDBQueryFilter> queryFilter() {
-    Optional<String> maybeTtlAttribute =
-        Optional.ofNullable(context.getConf().get(DynamoDBConstants.TTL_ATTRIBUTE_NAME));
-    return maybeTtlAttribute.map(attributeName -> {
-      long now = Instant.now().getEpochSecond();
-      DynamoDBQueryFilter filter = new DynamoDBQueryFilter();
-      filter.addScanFilter(new DynamoDBFilter() {
-        @Override
-        public String getColumnName() {
-          return attributeName;
-        }
-
-        @Override
-        public String getColumnType() {
-          throw new Error();
-        }
-
-        @Override
-        public DynamoDBFilterOperator getOperator() {
-          throw new Error();
-        }
-
-        @Override
-        public Condition getDynamoDBCondition() {
-          return Condition
-              .builder()
-              .comparisonOperator(ComparisonOperator.GT)
-              .attributeValueList(AttributeValue.fromN(String.valueOf(now)))
-              .build();
-        }
-      });
-      return filter;
-    });
   }
 
 }
