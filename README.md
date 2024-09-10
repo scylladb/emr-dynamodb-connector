@@ -12,6 +12,7 @@ This is a fork from [awslabs/emr-dynamodb-connector](https://github.com/awslabs/
   - Set the number of task mappers to the number of scan segments by default;
   - Do not constrain the number of task mappers based on the estimated memory of the worker nodes.
 - Add support for excluding a set of Scan segments.
+- Load the AWS session token from the credentials provided by Spark.
 
 The complete changelog can be viewed here: [master...scylla-5.x](https://github.com/awslabs/emr-dynamodb-connector/compare/master...scylladb:emr-dynamodb-connector:scylla-5.x).
 

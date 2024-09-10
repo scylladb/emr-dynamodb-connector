@@ -99,7 +99,8 @@ public class DynamoDBClient {
   private static final CredentialPairName DEFAULT_CREDENTIAL_PAIR_NAME =
       new CredentialPairName(
           DynamoDBConstants.DEFAULT_ACCESS_KEY_CONF,
-          DynamoDBConstants.DEFAULT_SECRET_KEY_CONF
+          DynamoDBConstants.DEFAULT_SECRET_KEY_CONF,
+          DynamoDBConstants.DEFAULT_SESSION_TOKEN_CONF
       );
   private final Map<String, List<WriteRequest>> writeBatchMap = new HashMap<>();
   private final DynamoDbClient dynamoDB;
@@ -472,7 +473,7 @@ public class DynamoDBClient {
     if (Strings.isNullOrEmpty(accessKey)) {
       accessKey = conf.get(DEFAULT_CREDENTIAL_PAIR_NAME.getAccessKeyName());
       secretKey = conf.get(DEFAULT_CREDENTIAL_PAIR_NAME.getSecretKeyName());
-      sessionKey = null;
+      sessionKey = conf.get(DEFAULT_CREDENTIAL_PAIR_NAME.getSessionKeyName());
     } else {
       secretKey = conf.get(DYNAMODB_SESSION_CREDENTIAL_PAIR_NAME.getSecretKeyName());
       sessionKey = conf.get(DYNAMODB_SESSION_CREDENTIAL_PAIR_NAME.getSessionKeyName());
