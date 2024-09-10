@@ -104,6 +104,24 @@ public class DynamoDBClientTest {
   }
 
   @Test
+  public void testDefaultCredentialsWithSessionToken() {
+    final String DEFAULT_ACCESS_KEY = "abc";
+    final String DEFAULT_SECRET_KEY = "xyz";
+    final String DEFAULT_SESSION_TOKEN = "007";
+    Configuration conf = new Configuration();
+    conf.set(DynamoDBConstants.DEFAULT_ACCESS_KEY_CONF, DEFAULT_ACCESS_KEY);
+    conf.set(DynamoDBConstants.DEFAULT_SECRET_KEY_CONF, DEFAULT_SECRET_KEY);
+    conf.set(DynamoDBConstants.DEFAULT_SESSION_TOKEN_CONF, DEFAULT_SESSION_TOKEN);
+
+    DynamoDBClient dynamoDBClient = new DynamoDBClient();
+    AwsCredentialsProvider provider = dynamoDBClient.getAwsCredentialsProvider(conf);
+    AwsSessionCredentials sessionCredentials = (AwsSessionCredentials) provider.resolveCredentials();
+    Assert.assertEquals(DEFAULT_ACCESS_KEY, sessionCredentials.accessKeyId());
+    Assert.assertEquals(DEFAULT_SECRET_KEY, sessionCredentials.secretAccessKey());
+    Assert.assertEquals(DEFAULT_SESSION_TOKEN, sessionCredentials.sessionToken());
+  }
+
+  @Test
   public void testCustomCredentialsProviderWithConstructor() {
     final String MY_ACCESS_KEY = "abc";
     final String MY_SECRET_KEY = "xyz";
