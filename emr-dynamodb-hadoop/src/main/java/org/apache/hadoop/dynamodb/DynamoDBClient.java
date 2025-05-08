@@ -188,8 +188,8 @@ public class DynamoDBClient {
             maybeTtlAttributeName
           )
       );
-      if (!retryResult.result.scannedCount().equals(retryResult.result.count())) {
-        log.warn(
+      if (!retryResult.result.scannedCount().equals(retryResult.result.count()) && log.isDebugEnabled()) {
+        log.debug(
                 String.format("Reading table %s with TTL field %s, %s rows were scanned "
                                 + "but only %s rows will be returned.",
                         maybeTtlAttributeName,
