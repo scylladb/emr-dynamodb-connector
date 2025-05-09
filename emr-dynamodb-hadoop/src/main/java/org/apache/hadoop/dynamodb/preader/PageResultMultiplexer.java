@@ -34,6 +34,7 @@ public class PageResultMultiplexer<V> {
 
   private final int batchSize;
   private final int capacity;
+  private int skippedRowsCounter;
   private final BlockingQueue<PageResults<V>> pages;
   private final AtomicInteger pageCount = new AtomicInteger();
   private final Object removeItemLock = new Object();
@@ -47,6 +48,7 @@ public class PageResultMultiplexer<V> {
     this.capacity = capacity;
     this.pages = new LinkedBlockingQueue<>(capacity);
     this.pageIterator = pages.iterator();
+    this.skippedRowsCounter = 0;
   }
 
   public boolean addPageResults(PageResults<V> page) {
@@ -64,6 +66,7 @@ public class PageResultMultiplexer<V> {
     }
 
     pageCount.incrementAndGet();
+    skippedRowsCounter += page.skippedRowsCount;
     log.info("Added a page. Page count: " + pageCount.get());
 
     return true;
@@ -72,7 +75,7 @@ public class PageResultMultiplexer<V> {
   public V next() throws IOException {
     if (itemsReturned % 10000 == 0) {
       log.info("Pagemux stats: items=" + itemsReturned + ", pages=" + pageCount.get() + ", cap="
-          + capacity);
+          + capacity + ", skippedRows=" + this.skippedRowsCounter);
     }
 
     synchronized (removeItemLock) {

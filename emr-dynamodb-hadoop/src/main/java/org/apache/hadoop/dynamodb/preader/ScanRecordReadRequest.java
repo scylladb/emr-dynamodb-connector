@@ -68,7 +68,9 @@ public class ScanRecordReadRequest extends AbstractRecordReadRequest {
         // Translate the default value to NULL here, to keep this assumption in other classes.
         response.hasLastEvaluatedKey() ? response.lastEvaluatedKey() : null,
         consumedCapacityUnits,
-        retries);
+            retries,
+            response.scannedCount() - response.count()
+    );
   }
 
 }

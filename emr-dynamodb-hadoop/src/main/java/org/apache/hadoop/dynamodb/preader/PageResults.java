@@ -24,11 +24,13 @@ public class PageResults<V> {
   public final V lastEvaluatedKey;
   public final double consumedRcu;
   public final int retries;
+  public final int skippedRowsCount;
   public final Exception exception;
 
   private volatile int pos;
 
-  public PageResults(List<V> items, V lastEvaluatedKey, double consumedRcu, int retries) {
+  public PageResults(List<V> items, V lastEvaluatedKey, double consumedRcu,
+                     int retries, int skippedRowsCount) {
     if (items == null) {
       throw new IllegalArgumentException("Items must not be null");
     }
@@ -37,10 +39,11 @@ public class PageResults<V> {
     this.consumedRcu = consumedRcu;
     this.retries = retries;
     this.exception = null;
+    this.skippedRowsCount = skippedRowsCount;
   }
 
   public PageResults(List<V> items, V lastEvaluatedKey) {
-    this(items, lastEvaluatedKey, 0.0, 0);
+    this(items, lastEvaluatedKey, 0.0, 0, 0);
   }
 
   public PageResults(Exception exception) {
@@ -52,6 +55,7 @@ public class PageResults<V> {
     this.consumedRcu = 0;
     this.retries = 0;
     this.exception = exception;
+    this.skippedRowsCount = 0;
   }
 
   public V next() {
