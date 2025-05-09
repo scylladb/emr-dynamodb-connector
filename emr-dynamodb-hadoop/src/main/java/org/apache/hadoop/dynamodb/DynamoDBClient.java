@@ -178,28 +178,6 @@ public class DynamoDBClient {
       log.debug("Executing DynamoDB scan: " + scanRequest);
       return dynamoDB.scan(scanRequest);
     }, reporter, PrintCounter.DynamoDBReadThrottle);
-    String maybeTtlAttributeName = config.get(DynamoDBConstants.TTL_ATTRIBUTE_NAME);
-    // for information only
-    if (maybeTtlAttributeName != null &&  !maybeTtlAttributeName.isEmpty()) {
-      log.debug(
-          String.format(
-            "Reading table %s, taking %s into account for row TTL",
-            tableName,
-            maybeTtlAttributeName
-          )
-      );
-      if (!retryResult.result.scannedCount().equals(retryResult.result.count())
-              && log.isDebugEnabled()) {
-        log.debug(
-                String.format("Reading table %s with TTL field %s, %s rows were scanned "
-                                + "but only %s rows will be returned.",
-                        maybeTtlAttributeName,
-                        retryResult.result.scannedCount(),
-                        retryResult.result.count()
-                )
-        );
-      }
-    }
     return retryResult;
   }
 
