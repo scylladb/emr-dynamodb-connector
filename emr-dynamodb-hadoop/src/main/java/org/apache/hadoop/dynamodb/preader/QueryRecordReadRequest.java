@@ -48,7 +48,7 @@ public class QueryRecordReadRequest extends AbstractRecordReadRequest {
         response.hasLastEvaluatedKey() ? response.lastEvaluatedKey() : null,
         response.consumedCapacity().capacityUnits(),
         retries,
-        0 // only for scan
+        0 // only for scan can have skip raws, due to TTL filtering
     );
   }
 }
