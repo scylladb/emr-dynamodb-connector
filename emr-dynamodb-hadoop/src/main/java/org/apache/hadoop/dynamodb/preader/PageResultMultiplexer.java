@@ -34,7 +34,8 @@ public class PageResultMultiplexer<V> {
 
   private final int batchSize;
   private final int capacity;
-  private int skippedRowsCounter;
+  // number of skipped rows during a scan, because of reached TTL
+  private volatile long skippedRowsCounter;
   private final BlockingQueue<PageResults<V>> pages;
   private final AtomicInteger pageCount = new AtomicInteger();
   private final Object removeItemLock = new Object();
@@ -48,7 +49,7 @@ public class PageResultMultiplexer<V> {
     this.capacity = capacity;
     this.pages = new LinkedBlockingQueue<>(capacity);
     this.pageIterator = pages.iterator();
-    this.skippedRowsCounter = 0;
+    this.skippedRowsCounter = 0L; //skipped rows are counted on addPageResults during a scan
   }
 
   public boolean addPageResults(PageResults<V> page) {
