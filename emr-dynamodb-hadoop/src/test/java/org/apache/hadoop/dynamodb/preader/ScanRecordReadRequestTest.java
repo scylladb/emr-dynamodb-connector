@@ -49,8 +49,7 @@ public final class ScanRecordReadRequestTest {
     when(context.getSplit()).thenReturn(new DynamoDBSegmentsSplit());
     ScanReadManager readManager = Mockito.mock(ScanReadManager.class);
     ScanRecordReadRequest readRequest = new ScanRecordReadRequest(readManager, context, 0, Optional.empty(), null);
-    PageResults<Map<String, AttributeValue>> pageResults =
-        readRequest.fetchPage(new RequestLimit(0, 0));
+    PageResults<Map<String, AttributeValue>> pageResults = readRequest.fetchPage(new RequestLimit(0, 0));
     assertEquals(0.0, pageResults.consumedRcu, 0.0);
   }
 
@@ -62,8 +61,18 @@ public final class ScanRecordReadRequestTest {
         anyInt(),
         any(Map.class),
         anyLong(),
-        any(Reporter.class))
-    ).thenReturn(scanResultRetryResult);
+        any(Reporter.class))).thenReturn(scanResultRetryResult);
+
+    when(client.scanTable(
+        anyString(),
+        any(DynamoDBQueryFilter.class),
+        anyInt(),
+        anyInt(),
+        any(Map.class),
+        anyLong(),
+        any(Reporter.class),
+        anyString(),
+        any(Map.class))).thenReturn(scanResultRetryResult);
   }
 
 }

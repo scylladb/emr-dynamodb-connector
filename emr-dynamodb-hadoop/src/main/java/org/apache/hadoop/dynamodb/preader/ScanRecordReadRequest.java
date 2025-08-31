@@ -26,11 +26,16 @@ public class ScanRecordReadRequest extends AbstractRecordReadRequest {
   /** Optional ScanFilter to add to Scan requests */
   final Optional<DynamoDBQueryFilter> maybeScanFilter;
 
+  final String filterExpression;
+  final Map<String, AttributeValue> expressionAttributeValues;
+
   @Deprecated
   public ScanRecordReadRequest(AbstractReadManager readMgr, DynamoDBRecordReaderContext context,
       int segment, Map<String, AttributeValue> lastEvaluatedKey) {
     super(readMgr, context, segment, lastEvaluatedKey);
     this.maybeScanFilter = Optional.empty();
+    this.filterExpression = null;
+    this.expressionAttributeValues = null;
   }
 
   public ScanRecordReadRequest(AbstractReadManager readMgr, DynamoDBRecordReaderContext context,
@@ -38,22 +43,33 @@ public class ScanRecordReadRequest extends AbstractRecordReadRequest {
       Map<String, AttributeValue> lastEvaluatedKey) {
     super(readMgr, context, segment, lastEvaluatedKey);
     this.maybeScanFilter = maybeScanFilter;
+    this.filterExpression = null;
+    this.expressionAttributeValues = null;
+  }
+
+  public ScanRecordReadRequest(AbstractReadManager readMgr, DynamoDBRecordReaderContext context,
+      int segment, String filterExpression, Map<String, AttributeValue> expressionAttributeValues,
+      Map<String, AttributeValue> lastEvaluatedKey) {
+    super(readMgr, context, segment, lastEvaluatedKey);
+    this.maybeScanFilter = Optional.empty();
+    this.filterExpression = filterExpression;
+    this.expressionAttributeValues = expressionAttributeValues;
   }
 
   @Override
   protected AbstractRecordReadRequest buildNextReadRequest(PageResults<Map<String,
       AttributeValue>> pageResults) {
-    return new ScanRecordReadRequest(readMgr, context, segment, maybeScanFilter,
-        pageResults.lastEvaluatedKey);
+    return new ScanRecordReadRequest(readMgr, context, segment, filterExpression,
+        expressionAttributeValues, pageResults.lastEvaluatedKey);
   }
 
   @Override
   protected PageResults<Map<String, AttributeValue>> fetchPage(RequestLimit lim) {
     // Read from DynamoDB
     RetryResult<ScanResponse> retryResult = context.getClient()
-            .scanTable(tableName, maybeScanFilter.orElse(null), segment,
-                context.getSplit().getTotalSegments(), lastEvaluatedKey, lim.items,
-                context.getReporter());
+        .scanTable(tableName, maybeScanFilter.orElse(null), segment,
+            context.getSplit().getTotalSegments(), lastEvaluatedKey, lim.items,
+            context.getReporter(), filterExpression, expressionAttributeValues);
 
     ScanResponse response = retryResult.result;
     int retries = retryResult.retries;

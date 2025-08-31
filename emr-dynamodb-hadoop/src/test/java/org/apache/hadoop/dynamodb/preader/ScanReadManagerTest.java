@@ -30,6 +30,8 @@ public final class ScanReadManagerTest {
     ScanReadManager readManager = new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(), context);
     ScanRecordReadRequest readRequest = (ScanRecordReadRequest) readManager.dequeueReadRequest();
     assertFalse(readRequest.maybeScanFilter.isPresent());
+    assertNull(readRequest.filterExpression);
+    assertNull(readRequest.expressionAttributeValues);
   }
 
   @Test
@@ -41,9 +43,30 @@ public final class ScanReadManagerTest {
     when(context.getSplit()).thenReturn(new DynamoDBSegmentsSplit(null, 1, 1, Collections.singletonList(1), 1, 0, null));
     ScanReadManager readManager = new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(), context);
     ScanRecordReadRequest readRequest = (ScanRecordReadRequest) readManager.dequeueReadRequest();
-    assertTrue(readRequest.maybeScanFilter.isPresent());
-    Map<String, Condition> scanFilter = readRequest.maybeScanFilter.get().getScanFilter();
-    assertNotNull(scanFilter.get(ttlAttributeName));
+    assertFalse(readRequest.maybeScanFilter.isPresent());
+    assertNotNull(readRequest.filterExpression);
+    assertTrue(readRequest.filterExpression.contains("attribute_not_exists(" + ttlAttributeName + ")"));
+    assertTrue(readRequest.filterExpression.contains(ttlAttributeName + " > :now"));
+    assertNotNull(readRequest.expressionAttributeValues);
+    assertTrue(readRequest.expressionAttributeValues.containsKey(":now"));
+  }
+
+  @Test
+  public void filterExpressionHasCorrectTtlLogic() {
+    final String ttlAttributeName = "expires_at";
+    JobConf conf = new JobConf();
+    conf.set(DynamoDBConstants.TTL_ATTRIBUTE_NAME, ttlAttributeName);
+    when(context.getConf()).thenReturn(conf);
+    when(context.getSplit())
+        .thenReturn(new DynamoDBSegmentsSplit(null, 1, 1, Collections.singletonList(1), 1, 0, null));
+
+    ScanReadManager readManager = new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(),
+        context);
+    ScanRecordReadRequest readRequest = (ScanRecordReadRequest) readManager.dequeueReadRequest();
+
+    String expectedExpression = "(attribute_not_exists(expires_at)) OR (expires_at > :now)";
+    assertEquals("FilterExpression should have correct TTL logic",
+        expectedExpression, readRequest.filterExpression);
   }
 
 }

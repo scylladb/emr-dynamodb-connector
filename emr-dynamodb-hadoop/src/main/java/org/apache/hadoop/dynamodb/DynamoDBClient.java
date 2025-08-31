@@ -158,6 +158,14 @@ public class DynamoDBClient {
   public RetryResult<ScanResponse> scanTable(
       String tableName, DynamoDBQueryFilter dynamoDBQueryFilter, Integer segment, Integer
       totalSegments, Map<String, AttributeValue> exclusiveStartKey, long limit, Reporter reporter) {
+    return scanTable(tableName, dynamoDBQueryFilter, segment, totalSegments, exclusiveStartKey,
+        limit, reporter, null, null);
+  }
+
+  public RetryResult<ScanResponse> scanTable(
+      String tableName, DynamoDBQueryFilter dynamoDBQueryFilter, Integer segment, Integer
+      totalSegments, Map<String, AttributeValue> exclusiveStartKey, long limit, Reporter reporter,
+      String filterExpression, Map<String, AttributeValue> expressionAttributeValues) {
     final ScanRequest.Builder scanRequestBuilder = ScanRequest.builder().tableName(tableName)
         .exclusiveStartKey(exclusiveStartKey)
         .limit(Ints.checkedCast(limit))
@@ -170,6 +178,14 @@ public class DynamoDBClient {
       if (!scanFilter.isEmpty()) {
         scanRequestBuilder.scanFilter(scanFilter);
       }
+    }
+
+    if (filterExpression != null) {
+      scanRequestBuilder.filterExpression(filterExpression);
+    }
+
+    if (expressionAttributeValues != null) {
+      scanRequestBuilder.expressionAttributeValues(expressionAttributeValues);
     }
 
     final ScanRequest scanRequest = scanRequestBuilder.build();

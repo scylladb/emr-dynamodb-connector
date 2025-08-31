@@ -98,6 +98,15 @@ public class DynamoDBRecordReaderTest {
         }
       }
 
+      @Override
+      public RetryResult<ScanResponse> scanTable(String tableName, DynamoDBQueryFilter
+          dynamoDBQueryFilter, Integer segment, Integer totalSegments, Map<String,
+          AttributeValue> exclusiveStartKey, long limit, Reporter reporter,
+          String filterExpression, Map<String, AttributeValue> expressionAttributeValues) {
+        return scanTable(tableName, dynamoDBQueryFilter, segment, totalSegments,
+            exclusiveStartKey, limit, reporter);
+      }
+
       private List<Map<String, AttributeValue>> getItems() {
         List<Map<String, AttributeValue>> items = new ArrayList<>();
         for (String key : HASH_KEYS) {
@@ -146,6 +155,15 @@ public class DynamoDBRecordReaderTest {
           AttributeValue> exclusiveStartKey, long limit, Reporter reporter) {
         return new RetryResult<>(getHashNumberRangeKeyItems(HASH_KEYS, "S"), 0);
       }
+
+      @Override
+      public RetryResult<ScanResponse> scanTable(String tableName, DynamoDBQueryFilter
+          dynamoDBQueryFilter, Integer segment, Integer totalSegments, Map<String,
+          AttributeValue> exclusiveStartKey, long limit, Reporter reporter,
+          String filterExpression, Map<String, AttributeValue> expressionAttributeValues) {
+        return scanTable(tableName, dynamoDBQueryFilter, segment, totalSegments,
+            exclusiveStartKey, limit, reporter);
+      }
     });
 
     // Setup mock client
@@ -188,6 +206,15 @@ public class DynamoDBRecordReaderTest {
           AttributeValue> exclusiveStartKey, long limit, Reporter reporter) {
         assertNull(exclusiveStartKey);
         return new RetryResult<>(getHashNumberRangeKeyItems(HASH_KEYS, "S"), 0);
+      }
+
+      @Override
+      public RetryResult<ScanResponse> scanTable(String tableName, DynamoDBQueryFilter
+          dynamoDBQueryFilter, Integer segment, Integer totalSegments, Map<String,
+          AttributeValue> exclusiveStartKey, long limit, Reporter reporter,
+          String filterExpression, Map<String, AttributeValue> expressionAttributeValues) {
+        return scanTable(tableName, dynamoDBQueryFilter, segment, totalSegments,
+            exclusiveStartKey, limit, reporter);
       }
     });
 
@@ -232,6 +259,15 @@ public class DynamoDBRecordReaderTest {
         assertEquals(4, (int) totalSegments);
         return new RetryResult<>(getHashKeyItems(HASH_KEYS), 0);
       }
+
+      @Override
+      public RetryResult<ScanResponse> scanTable(String tableName, DynamoDBQueryFilter
+          dynamoDBQueryFilter, Integer segment, Integer totalSegments, Map<String,
+          AttributeValue> exclusiveStartKey, long limit, Reporter reporter,
+          String filterExpression, Map<String, AttributeValue> expressionAttributeValues) {
+        return scanTable(tableName, dynamoDBQueryFilter, segment, totalSegments,
+            exclusiveStartKey, limit, reporter);
+      }
     });
 
     // Setup mock client
@@ -268,6 +304,15 @@ public class DynamoDBRecordReaderTest {
           dynamoDBQueryFilter, Integer segment, Integer totalSegments, Map<String,
           AttributeValue> exclusiveStartKey, long limit, Reporter reporter) {
         throw new RuntimeException("Unrecoverable Exception");
+      }
+
+      @Override
+      public RetryResult<ScanResponse> scanTable(String tableName, DynamoDBQueryFilter
+          dynamoDBQueryFilter, Integer segment, Integer totalSegments, Map<String,
+          AttributeValue> exclusiveStartKey, long limit, Reporter reporter,
+          String filterExpression, Map<String, AttributeValue> expressionAttributeValues) {
+        return scanTable(tableName, dynamoDBQueryFilter, segment, totalSegments,
+            exclusiveStartKey, limit, reporter);
       }
     });
 
