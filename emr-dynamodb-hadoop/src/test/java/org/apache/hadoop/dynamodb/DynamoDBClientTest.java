@@ -21,23 +21,25 @@ import com.google.common.collect.ImmutableMap;
 
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.dynamodb.filter.DynamoDBQueryFilter;
+import org.apache.hadoop.dynamodb.preader.ScanReadManager;
+import org.apache.hadoop.mapred.Reporter;
 import org.hamcrest.core.Is;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Map;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -52,7 +54,11 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.Capacity;
+import software.amazon.awssdk.services.dynamodb.model.ComparisonOperator;
+import software.amazon.awssdk.services.dynamodb.model.Condition;
 import software.amazon.awssdk.services.dynamodb.model.ConsumedCapacity;
+import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 
 public class DynamoDBClientTest {
@@ -73,6 +79,43 @@ public class DynamoDBClientTest {
   public void setup() {
     conf.clear();
     client = new DynamoDBClient(mockClient, conf);
+  }
+
+  @Test
+  public void testScanTableUsesFilterExpressionWhenPresent() {
+    Mockito.when(mockClient.scan(Mockito.any(ScanRequest.class)))
+        .thenReturn(ScanResponse.builder().build());
+
+    DynamoDBQueryFilter filter = new DynamoDBQueryFilter();
+    filter.setFilterExpression(ScanReadManager.TTL_FILTER_EXPRESSION);
+    filter.setExpressionAttributeNames(ImmutableMap.of("#ttl", "ttl"));
+    filter.setExpressionAttributeValues(ImmutableMap.of(
+        ":ttlType", AttributeValue.fromS("N"),
+        ":now", AttributeValue.fromN("123")));
+
+    client.scanTable("dummyTable", filter, 0, 1, null, 1, Reporter.NULL);
+
+    ArgumentCaptor<ScanRequest> requestCaptor = ArgumentCaptor.forClass(ScanRequest.class);
+    Mockito.verify(mockClient).scan(requestCaptor.capture());
+
+    ScanRequest request = requestCaptor.getValue();
+    Assert.assertEquals(ScanReadManager.TTL_FILTER_EXPRESSION, request.filterExpression());
+    Assert.assertEquals("ttl", request.expressionAttributeNames().get("#ttl"));
+    Assert.assertEquals("N", request.expressionAttributeValues().get(":ttlType").s());
+    Assert.assertEquals("123", request.expressionAttributeValues().get(":now").n());
+    Assert.assertTrue(request.scanFilter() == null || request.scanFilter().isEmpty());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testScanTableRejectsMixedLegacyAndExpressionFilters() {
+    DynamoDBQueryFilter filter = new DynamoDBQueryFilter();
+    filter.getScanFilter().put("ttl", Condition.builder()
+        .comparisonOperator(ComparisonOperator.NULL)
+        .build());
+    filter.setFilterExpression("attribute_not_exists(#ttl)");
+    filter.setExpressionAttributeNames(ImmutableMap.of("#ttl", "ttl"));
+
+    client.scanTable("dummyTable", filter, 0, 1, null, 1, Reporter.NULL);
   }
 
   @Test

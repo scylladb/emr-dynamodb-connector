@@ -9,7 +9,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
-import software.amazon.awssdk.services.dynamodb.model.Condition;
 
 import java.util.Collections;
 import java.util.Map;
@@ -42,8 +41,11 @@ public final class ScanReadManagerTest {
     ScanReadManager readManager = new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(), context);
     ScanRecordReadRequest readRequest = (ScanRecordReadRequest) readManager.dequeueReadRequest();
     assertTrue(readRequest.maybeScanFilter.isPresent());
-    Map<String, Condition> scanFilter = readRequest.maybeScanFilter.get().getScanFilter();
-    assertNotNull(scanFilter.get(ttlAttributeName));
+    org.apache.hadoop.dynamodb.filter.DynamoDBQueryFilter filter = readRequest.maybeScanFilter.get();
+    assertEquals(ScanReadManager.TTL_FILTER_EXPRESSION, filter.getFilterExpression());
+    assertEquals(ttlAttributeName, filter.getExpressionAttributeNames().get("#ttl"));
+    assertEquals("N", filter.getExpressionAttributeValues().get(":ttlType").s());
+    assertNotNull(filter.getExpressionAttributeValues().get(":now"));
   }
 
 }

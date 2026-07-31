@@ -167,8 +167,35 @@ public class DynamoDBClient {
 
     if (dynamoDBQueryFilter != null) {
       Map<String, Condition> scanFilter = dynamoDBQueryFilter.getScanFilter();
-      if (!scanFilter.isEmpty()) {
+      String filterExpression = dynamoDBQueryFilter.getFilterExpression();
+      Map<String, String> expressionAttributeNames =
+          dynamoDBQueryFilter.getExpressionAttributeNames();
+      Map<String, AttributeValue> expressionAttributeValues =
+          dynamoDBQueryFilter.getExpressionAttributeValues();
+      boolean hasLegacyScanFilter = !scanFilter.isEmpty();
+      boolean hasExpressionState = filterExpression != null
+          || (expressionAttributeNames != null && !expressionAttributeNames.isEmpty())
+          || (expressionAttributeValues != null && !expressionAttributeValues.isEmpty());
+
+      if (hasLegacyScanFilter && hasExpressionState) {
+        throw new IllegalArgumentException(
+            "ScanFilter and FilterExpression cannot be used together in the same Scan request. "
+                + "scanFilter keys: " + scanFilter.keySet()
+                + ", filterExpression: " + filterExpression);
+      }
+
+      if (hasLegacyScanFilter) {
         scanRequestBuilder.scanFilter(scanFilter);
+      }
+
+      if (filterExpression != null) {
+        scanRequestBuilder.filterExpression(filterExpression);
+      }
+      if (expressionAttributeNames != null && !expressionAttributeNames.isEmpty()) {
+        scanRequestBuilder.expressionAttributeNames(expressionAttributeNames);
+      }
+      if (expressionAttributeValues != null && !expressionAttributeValues.isEmpty()) {
+        scanRequestBuilder.expressionAttributeValues(expressionAttributeValues);
       }
     }
 

@@ -15,12 +15,17 @@ package org.apache.hadoop.dynamodb.filter;
 
 import java.util.HashMap;
 import java.util.Map;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.Condition;
 
 public class DynamoDBQueryFilter {
 
   private final Map<String, Condition> keyConditions = new HashMap<>();
   private final Map<String, Condition> scanFilter = new HashMap<>();
+
+  private String filterExpression;
+  private Map<String, String> expressionAttributeNames = new HashMap<>();
+  private Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
 
   private DynamoDBIndexInfo index;
 
@@ -46,5 +51,29 @@ public class DynamoDBQueryFilter {
 
   public void addScanFilter(DynamoDBFilter filter) {
     this.scanFilter.put(filter.getColumnName(), filter.getDynamoDBCondition());
+  }
+
+  public String getFilterExpression() {
+    return filterExpression;
+  }
+
+  public void setFilterExpression(String filterExpression) {
+    this.filterExpression = filterExpression;
+  }
+
+  public Map<String, String> getExpressionAttributeNames() {
+    return expressionAttributeNames;
+  }
+
+  public void setExpressionAttributeNames(Map<String, String> expressionAttributeNames) {
+    this.expressionAttributeNames = expressionAttributeNames;
+  }
+
+  public Map<String, AttributeValue> getExpressionAttributeValues() {
+    return expressionAttributeValues;
+  }
+
+  public void setExpressionAttributeValues(Map<String, AttributeValue> expressionAttributeValues) {
+    this.expressionAttributeValues = expressionAttributeValues;
   }
 }

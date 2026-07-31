@@ -16,19 +16,20 @@ package org.apache.hadoop.dynamodb.preader;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import org.apache.hadoop.dynamodb.DynamoDBConstants;
-import org.apache.hadoop.dynamodb.filter.DynamoDBFilter;
-import org.apache.hadoop.dynamodb.filter.DynamoDBFilterOperator;
 import org.apache.hadoop.dynamodb.filter.DynamoDBQueryFilter;
 import org.apache.hadoop.dynamodb.util.AbstractTimeSource;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.ComparisonOperator;
-import software.amazon.awssdk.services.dynamodb.model.Condition;
 
 public class ScanReadManager extends AbstractReadManager {
+
+  public static final String TTL_FILTER_EXPRESSION =
+      "attribute_not_exists(#ttl) OR NOT attribute_type(#ttl, :ttlType) OR #ttl > :now";
 
   public ScanReadManager(RateController rateController, AbstractTimeSource time,
       DynamoDBRecordReaderContext context) {
@@ -58,33 +59,21 @@ public class ScanReadManager extends AbstractReadManager {
     Optional<DynamoDBQueryFilter> maybeScanFilter =
         Optional.ofNullable(context.getConf().get(DynamoDBConstants.TTL_ATTRIBUTE_NAME))
             .map(attributeName -> {
-              long now = Instant.now().getEpochSecond();
               DynamoDBQueryFilter filter = new DynamoDBQueryFilter();
-              filter.addScanFilter(new DynamoDBFilter() {
-                @Override
-                public String getColumnName() {
-                  return attributeName;
-                }
 
-                @Override
-                public String getColumnType() {
-                  throw new Error();
-                }
+              filter.setFilterExpression(TTL_FILTER_EXPRESSION);
 
-                @Override
-                public DynamoDBFilterOperator getOperator() {
-                  throw new Error();
-                }
+              Map<String, String> expressionAttributeNames = new HashMap<>();
+              expressionAttributeNames.put("#ttl", attributeName);
+              filter.setExpressionAttributeNames(expressionAttributeNames);
 
-                @Override
-                public Condition getDynamoDBCondition() {
-                  return Condition
-                      .builder()
-                      .comparisonOperator(ComparisonOperator.GT)
-                      .attributeValueList(AttributeValue.fromN(String.valueOf(now)))
-                      .build();
-                }
-              });
+              Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+              // attribute_type() expects a type code ("N", "S", "B", etc.) as an S-typed value
+              expressionAttributeValues.put(":ttlType", AttributeValue.fromS("N"));
+              long now = Instant.now().getEpochSecond();
+              expressionAttributeValues.put(":now", AttributeValue.fromN(String.valueOf(now)));
+              filter.setExpressionAttributeValues(expressionAttributeValues);
+
               return filter;
             });
 
