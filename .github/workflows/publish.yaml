@@ -19,6 +19,38 @@ jobs:
           server-password: SONATYPE_TOKEN_PASSWORD
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Configure Maven credentials
+        shell: python
+        run: |
+          import os, pathlib, xml.etree.ElementTree as ET
+          missing = [k for k in ('SONATYPE_TOKEN_USERNAME', 'SONATYPE_TOKEN_PASSWORD') if not os.environ.get(k)]
+          if missing:
+            raise EnvironmentError(f'Required secret(s) not set: {", ".join(missing)}')
+          settings_path = pathlib.Path.home() / '.m2' / 'settings.xml'
+          # Detect namespace used by setup-java and preserve it
+          tree = ET.parse(str(settings_path))
+          root = tree.getroot()
+          ns_uri = root.tag.partition('{')[2].partition('}')[0] if root.tag.startswith('{') else ''
+          ns = f'{{{ns_uri}}}' if ns_uri else ''
+          if ns_uri:
+            ET.register_namespace('', ns_uri)
+          servers = root.find(f'{ns}servers')
+          if servers is None:
+            raise RuntimeError('<servers> element not found in settings.xml')
+          updates = {'central': {'username': os.environ['SONATYPE_TOKEN_USERNAME'],
+                                  'password': os.environ['SONATYPE_TOKEN_PASSWORD']}}
+          for server in servers.findall(f'{ns}server'):
+            sid = server.find(f'{ns}id')
+            if sid is not None and sid.text in updates:
+              for field, value in updates[sid.text].items():
+                el = server.find(f'{ns}{field}')
+                if el is None:
+                  el = ET.SubElement(server, f'{ns}{field}')
+                el.text = value
+          tree.write(str(settings_path), xml_declaration=True, encoding='UTF-8')
+        env:
+          SONATYPE_TOKEN_USERNAME: ${{ secrets.SONATYPE_TOKEN_USERNAME }}
+          SONATYPE_TOKEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
       - name: Publish
         run: |
           mvn versions:set -DnewVersion=${{ github.event.release.tag_name }}
