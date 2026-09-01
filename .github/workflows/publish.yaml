@@ -21,8 +21,8 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Publish
         run: |
-          mvn versions:set -DnewVersion=${{ github.event.release.tag_name }}
-          mvn clean deploy -Prelease -Drelease.autopublish=true
+          mvn -ntp versions:set -DnewVersion=${{ github.event.release.tag_name }}
+          mvn -ntp clean deploy -Prelease -Drelease.autopublish=true
         env:
           SONATYPE_TOKEN_USERNAME: ${{ secrets.SONATYPE_TOKEN_USERNAME }}
           SONATYPE_TOKEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
