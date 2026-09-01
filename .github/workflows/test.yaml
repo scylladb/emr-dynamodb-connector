@@ -17,4 +17,4 @@ jobs:
           java-version: 8
           cache: maven
       - name: Run tests
-        run: mvn test
+        run: mvn -ntp test
