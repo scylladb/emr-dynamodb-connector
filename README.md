@@ -66,7 +66,9 @@ Currently the project builds against Hive 2.3.0, 1.2.1, and 1.0.0. Set this by u
 
 ## How to Build
 
-You need Java 8 and Maven.
+You need Java 17 (or newer) and Maven.
+
+Artifacts built from this branch target Java 17, so they require a Java 17+ runtime (for example Spark 4.x, or EMR releases running on Java 17). For Java 8/11 deployments, use releases from the earlier `5.x` line.
 
 After cloning, run `mvn clean install`.
 
