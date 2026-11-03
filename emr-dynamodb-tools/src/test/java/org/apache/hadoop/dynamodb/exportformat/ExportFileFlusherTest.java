@@ -35,6 +35,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -113,7 +114,7 @@ public class ExportFileFlusherTest {
     flusher.close(recordWriter, Reporter.NULL);
     expectedException.expect(IOException.class);
     verify(recordWriter, timeout(250).times(1)).close(Reporter.NULL);
-    flusher.close(mock(RecordWriter.class), Reporter.NULL);
+    closeUntilFailureSurfaces();
   }
 
   @Test
@@ -123,7 +124,7 @@ public class ExportFileFlusherTest {
     flusher.close(recordWriter, Reporter.NULL);
     expectedException.expect(RuntimeException.class);
     verify(recordWriter, timeout(250).times(1)).close(Reporter.NULL);
-    flusher.close(mock(RecordWriter.class), Reporter.NULL);
+    closeUntilFailureSurfaces();
   }
 
   @Test
@@ -142,5 +143,18 @@ public class ExportFileFlusherTest {
     flusher.close(recordWriter, Reporter.NULL);
     expectedException.expect(RuntimeException.class);
     flusher.sync();
+  }
+
+  /**
+   * The flusher records a close failure asynchronously, after the mocked close() has been invoked.
+   * Keep closing dummy writers until the earlier failure surfaces (the call then throws), or give
+   * up after a timeout.
+   */
+  private void closeUntilFailureSurfaces() throws IOException, InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline) {
+      flusher.close(mock(RecordWriter.class), Reporter.NULL);
+      Thread.sleep(10);
+    }
   }
 }
