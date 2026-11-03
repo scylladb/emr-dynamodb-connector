@@ -13,6 +13,7 @@ This is a fork from [awslabs/emr-dynamodb-connector](https://github.com/awslabs/
   - Do not constrain the number of task mappers based on the estimated memory of the worker nodes.
 - Add support for excluding a set of Scan segments.
 - Load the AWS session token from the credentials provided by Spark.
+- Keep the AWS SDK v2 (`dynamodb`, `apache-client`) as a regular (compile-scope) dependency, so it is part of the published dependency graph and bundled in the shaded jars. Upstream marks it `provided` because EMR supplies it; this fork is also used outside EMR.
 
 The complete changelog can be viewed here: [master...scylla-5.x](https://github.com/awslabs/emr-dynamodb-connector/compare/master...scylladb:emr-dynamodb-connector:scylla-5.x).
 
