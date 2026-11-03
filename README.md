@@ -13,17 +13,20 @@ This is a fork from [awslabs/emr-dynamodb-connector](https://github.com/awslabs/
   - Do not constrain the number of task mappers based on the estimated memory of the worker nodes.
 - Add support for excluding a set of Scan segments.
 - Load the AWS session token from the credentials provided by Spark.
+- Keep the AWS SDK v2 (`dynamodb`, `apache-client`) as a regular (compile-scope) dependency, so it is part of the published dependency graph and bundled in the shaded jars. Upstream marks it `provided` because EMR supplies it; this fork is also used outside EMR.
 
 The complete changelog can be viewed here: [master...scylla-5.x](https://github.com/awslabs/emr-dynamodb-connector/compare/master...scylladb:emr-dynamodb-connector:scylla-5.x).
 
 ## Introduction
 You can use this connector to access data in Amazon DynamoDB using Apache Hadoop, Apache Hive, and
-Apache Spark in Amazon EMR. You can process data directly in DynamoDB using these frameworks, or
-join data in DynamoDB with data in Amazon S3, Amazon RDS, or other storage layers that can be
-accessed by Amazon EMR.
+Apache Spark in Amazon EMR. 
+You can process data directly in DynamoDB using these frameworks, or join data in DynamoDB with data
+in Amazon S3, Amazon RDS, or other storage layers that can be accessed by Amazon EMR.
 
 - [Using Apache Hive in Amazon EMR with Amazon DynamoDB][emr-dynamodb-hive-docs]
 - [Accessing data in Amazon DynamoDB with Apache Spark][dynamodb-spark-blog-post]
+- [Connecting to DynamoDB with Amazon EMR Serverless][amazon-emr-serverless-user-guide]
+  
 
 Currently, the connector supports the following data types:
 
@@ -63,7 +66,9 @@ Currently the project builds against Hive 2.3.0, 1.2.1, and 1.0.0. Set this by u
 
 ## How to Build
 
-You need Java 8 and Maven.
+You need Java 17 (or newer) and Maven.
+
+Artifacts built from this branch target Java 17, so they require a Java 17+ runtime (for example Spark 4.x, or EMR releases running on Java 17). For Java 8/11 deployments, use releases from the earlier `5.x` line.
 
 After cloning, run `mvn clean install`.
 
@@ -205,6 +210,7 @@ We may occasionally merge the upstream changes to our fork.
 
 [emr-release-guide]: http://docs.aws.amazon.com/ElasticMapReduce/latest/ReleaseGuide/emr-release-components.html
 [dynamodb-dev-guide]: http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html
+[amazon-emr-serverless-user-guide]: https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/using-ddb-connector.html
 [hive-commands-emr-dev-guide]: http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/EMR_Hive_Commands.html
 [set-up-hive-table]: http://docs.aws.amazon.com/ElasticMapReduce/latest/ReleaseGuide/EMR_Interactive_Hive.html
 [hive-dynamodb-data-types]: http://docs.aws.amazon.com/ElasticMapReduce/latest/ReleaseGuide/EMR_Interactive_Hive.html#EMR_Hive_Properties

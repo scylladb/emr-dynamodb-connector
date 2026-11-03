@@ -8,7 +8,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.Map;
@@ -26,7 +26,7 @@ public final class ScanReadManagerTest {
   public void queryFilterIsEmptyWhenTtlAttributeNameIsEmpty() {
     when(context.getConf()).thenReturn(new JobConf());
     when(context.getSplit()).thenReturn(new DynamoDBSegmentsSplit(null, 1, 1, Collections.singletonList(1), 1, 0, null));
-    ScanReadManager readManager = new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(), context);
+    ScanReadManager readManager = newReadManager();
     ScanRecordReadRequest readRequest = (ScanRecordReadRequest) readManager.dequeueReadRequest();
     assertFalse(readRequest.maybeScanFilter.isPresent());
   }
@@ -38,7 +38,7 @@ public final class ScanReadManagerTest {
     conf.set(DynamoDBConstants.TTL_ATTRIBUTE_NAME, ttlAttributeName);
     when(context.getConf()).thenReturn(conf);
     when(context.getSplit()).thenReturn(new DynamoDBSegmentsSplit(null, 1, 1, Collections.singletonList(1), 1, 0, null));
-    ScanReadManager readManager = new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(), context);
+    ScanReadManager readManager = newReadManager();
     ScanRecordReadRequest readRequest = (ScanRecordReadRequest) readManager.dequeueReadRequest();
     assertTrue(readRequest.maybeScanFilter.isPresent());
     org.apache.hadoop.dynamodb.filter.DynamoDBQueryFilter filter = readRequest.maybeScanFilter.get();
@@ -48,4 +48,16 @@ public final class ScanReadManagerTest {
     assertNotNull(filter.getExpressionAttributeValues().get(":now"));
   }
 
+  /**
+   * Creates a ScanReadManager that doesn't start background ReadWorker threads, which would
+   * otherwise race with the test to dequeue the read requests.
+   */
+  private ScanReadManager newReadManager() {
+    return new ScanReadManager(Mockito.mock(RateController.class), new MockTimeSource(), context) {
+      @Override
+      protected void addWorker() {
+        // no-op
+      }
+    };
+  }
 }
